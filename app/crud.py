@@ -57,4 +57,3 @@ def update_post(id: int, new_post: Post):
     return {"data": my_posts}
 
 
-#just to show the data

@@ -2,8 +2,10 @@ from typing import Optional
 from fastapi import FastAPI
 from fastapi.params import Body
 from pydantic import BaseModel
-
-my_posts = [{"title": "post1", "content": "content1", "id":1}, {"title": "post2", "content": "content2", "id":2}]
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import time 
+from app.config import host, database, user, password
 
 app=FastAPI()
 
@@ -13,6 +15,24 @@ class Post(BaseModel):
     publish: bool = True  #Here True is default value for publish
     rating: Optional[int] = None  #Here rating is an optional field 
 
+while True:
+    try:
+        connection = psycopg2.connect(host=host,
+                                      database=database,
+                                user=user,
+                                password=password,
+                                cursor_factory=RealDictCursor)
+        cursor = connection.cursor()
+        print("Connected to the database")
+
+        break
+
+    except Exception as e:
+        print("connection failed")
+        print("error:",e)
+        time.sleep(2)
+
+my_posts = [{"title": "post1", "content": "content1", "id":1}, {"title": "post2", "content": "content2", "id":2}]
 
 @app.get("/posts")
 def get_posts():

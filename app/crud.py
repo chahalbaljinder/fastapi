@@ -5,7 +5,7 @@ from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time 
-from app.config import host, database, user, password
+from .config import host, database, user, password
 
 app=FastAPI()
 

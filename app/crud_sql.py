@@ -5,7 +5,13 @@ from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time 
-from app.config import host, database, user, password
+from sqlalchemy.orm import Session
+from fastapi import Depends
+from .config import host, database, user, password
+from . import models
+from .database import engine, get_db
+
+models.Base.metadata.create_all(bind=engine)
 
 app=FastAPI()
 
@@ -32,18 +38,20 @@ while True:
         print("error:",e)
         time.sleep(2)
 
-my_posts = [{"title": "post1", "content": "content1", "id":1}, {"title": "post2", "content": "content2", "id":2}]
 
 @app.get("/posts")
-def get_posts():
-    cursor.execute("SELECT * FROM posts")
-    posts = cursor.fetchall()
+def get_posts(db: Session =Depends(get_db)):
+    # cursor.execute("SELECT * FROM posts")
+    # posts = cursor.fetchall()
+    posts = db.query(models.Post).all()
     return {"data": posts}
 
 
-@app.get("/posts/latest")
-def get_latest_post():
-    return {"data": my_posts[-1]}  #returning the last post
+@app.get("/sqlalchemy")
+def test_posts(db: Session =Depends(get_db)):
+    posts = db.query(models.Post).all()
+    return {"data": posts}
+    
 
 
 @app.get("/posts/{id}")

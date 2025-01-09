@@ -1,24 +1,17 @@
-from typing import Optional
 from fastapi import FastAPI, HTTPException
-from fastapi.params import Body
-from pydantic import BaseModel
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from . import utils
 import time
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from .config import host, database, user, password
-from . import models
+from . import models,schemas
 from .database import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
 
 app=FastAPI()
-
-class Post(BaseModel):
-    title: str
-    content: str 
-    published: bool = True        #Here True is default value for publication
 
 while True:
     try:
@@ -38,22 +31,15 @@ while True:
         time.sleep(2)
 
 
-@app.get("/posts")
+@app.get("/posts", response_model=list[schemas.Post])
 def get_posts(db: Session =Depends(get_db)):
     # cursor.execute("SELECT * FROM posts")
     # posts = cursor.fetchall()
     posts = db.query(models.Post).all()
-    return {"data": posts}
+    return posts
 
 
-@app.get("/sqlalchemy")
-def test_posts(db: Session =Depends(get_db)):
-    posts = db.query(models.Post).all()
-    return {"data": posts}
-    
-
-
-@app.get("/posts/{id}")
+@app.get("/posts/{id}", response_model=schemas.Post)
 def get_post_by_id(id: int, db: Session =Depends(get_db)):
     # cursor.execute("SELECT * FROM posts WHERE id = %s", (str(id)))
     # post = cursor.fetchone()
@@ -61,12 +47,12 @@ def get_post_by_id(id: int, db: Session =Depends(get_db)):
     if post == None:
         raise HTTPException(status_code=404, detail=f"post with id {id} not found")
     else:
-        return {"data": post}
+        return post
 
 
 #using pydantic library for schema 
-@app.post("/newpost" , status_code=201)
-def create_post(new_post: Post,db: Session =Depends(get_db)):
+@app.post("/newpost" , status_code=201, response_model=schemas.Post)
+def create_post(new_post: schemas.PostCreate,db: Session =Depends(get_db)):
     try:
         # cursor.execute(
         #     "INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *",
@@ -79,7 +65,7 @@ def create_post(new_post: Post,db: Session =Depends(get_db)):
         db.add(new_post) #add the new post to the database
         db.commit()  #commit the changes to the database
         db.refresh(new_post)  #refresh the database to get the newly created post
-        return {"data": new_post}
+        return new_post
     except Exception as e:
         # Rollback in case of an error
         connection.rollback()
@@ -101,8 +87,8 @@ def delete_post(id: int, db:Session = Depends(get_db)):
         return {"data": {f"post with id {id} is deleted": deleted_post}}
 
 
-@app.put("/posts/{id}")
-def update_post(id: int, post: Post,db:Session =Depends(get_db)):
+@app.put("/posts/{id}", response_model=schemas.Post)
+def update_post(id: int, post: schemas.PostCreate,db:Session =Depends(get_db)):
     # cursor.execute(
     #     "UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *",
     #     (post.title, post.content, post.published, str(id)))
@@ -115,11 +101,10 @@ def update_post(id: int, post: Post,db:Session =Depends(get_db)):
     else:
         db.commit()
         updated_post = db.query(models.Post).filter(models.Post.id == id).first()
-        return {"data": updated_post}
+        return updated_post    
     
-    
-@app.patch("/posts/{id}")
-def update_post(id: int, post: Post,db:Session =Depends(get_db)):
+@app.patch("/posts/{id}", response_model=schemas.Post)
+def update_post(id: int, post: schemas.PostCreate,db:Session =Depends(get_db)):
     # cursor.execute("UPDATE posts SET title = %s WHERE id = %s RETURNING *", (post.title, str(id)))
     # updated_posts = cursor.fetchone()
     # connection.commit()
@@ -131,4 +116,36 @@ def update_post(id: int, post: Post,db:Session =Depends(get_db)):
     else:
         db.commit()
         updated_posts = db.query(models.Post).filter(models.Post.id == id).first()
-        return {"data": updated_posts}
+        return updated_posts
+    
+@app.post("/logusers",status_code=201, response_model=schemas.UserResponse)
+def create_user(user:schemas.UserCreate,db: Session =Depends(get_db)):
+    new_user=models.user(**user.dict())
+
+#hash the password
+    hashed_password = utils.hash_password(user.password)
+#assign the hashed password to the user
+    new_user.password = hashed_password
+    
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+    except Exception as e:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=f"An error occurred: {e}")
+    
+
+@app.get("/users", response_model=list[schemas.UserResponse])
+def get_users(db: Session =Depends(get_db)):
+    users = db.query(models.user).all()
+    return users
+
+@app.get("/users/{id}", response_model=schemas.UserResponse)    
+def get_user_by_id(id: int, db: Session =Depends(get_db)):
+    user = db.query(models.user).filter(models.user.id == id).first()
+    if user == None:
+        raise HTTPException(status_code=404, detail=f"user with id {id} not found")
+    else:
+        return user

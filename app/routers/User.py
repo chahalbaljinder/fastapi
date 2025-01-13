@@ -4,11 +4,11 @@ from app import models, schemas, utils
 from app.database import get_db
 
 router = APIRouter(
-    prefix="/api",
+    prefix="/users",
     tags=["Users"]
 )
 
-@router.post("/logusers", status_code=201, response_model=schemas.UserResponse)
+@router.post("/", status_code=201, response_model=schemas.UserResponse)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     new_user = models.user(**user.dict())
 
@@ -37,3 +37,4 @@ def get_user_by_id(id: int, db: Session = Depends(get_db)):
     if user is None:
         raise HTTPException(status_code=404, detail=f"user with id {id} not found")
     return user
+

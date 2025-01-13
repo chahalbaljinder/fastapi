@@ -8,7 +8,7 @@ from fastapi import Depends
 from .config import host, database, user, password
 from . import models,schemas
 from .database import engine, get_db
-from app.routers import post, User
+from app.routers import post, User, auth
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -33,3 +33,4 @@ while True:
 
 app.include_router(post.router)
 app.include_router(User.router)
+app.include_router(auth.router)

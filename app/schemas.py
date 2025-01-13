@@ -31,3 +31,7 @@ class UserResponse(UserBase):
     #other fields are inherited from PostBase reduce redundancy
     class Config:
         orm_mode = True
+
+class Userlogin(BaseModel):
+    email: EmailStr
+    password: str

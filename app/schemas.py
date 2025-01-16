@@ -13,6 +13,7 @@ class PostCreate(PostBase):
 class Post(PostBase):
     id: int
     created_at: datetime
+    user_id: int
     #other fields are inherited from PostBase reduce redundancy
 
     class Config:

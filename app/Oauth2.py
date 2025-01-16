@@ -24,7 +24,7 @@ def verify_token(token: str, credentials_exception):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("user_id")
-        if email is None:
+        if id is None:
             raise credentials_exception
         token_data = schemas.TokenData(email=email)
     except JWTError:
@@ -33,10 +33,11 @@ def verify_token(token: str, credentials_exception):
     return token_data
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session= Depends(database.get_db)):
-    credentials_exception = HTTPException(status_code=401, detail="Could not validate credentials", headers={"WWW-Authenticate": "Bearer"})
+    credentials_exception = HTTPException(status_code=401, detail="Could not validate credentials",
+                                           headers={"WWW-Authenticate": "Bearer"})
 
     token = verify_token(token, credentials_exception) 
 
-    user = db.query(models.user).filter(models.user.id==token.id).first()
+    user = db.query(models.user).filter(models.user.email==token.email).first()
 
     return user

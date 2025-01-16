@@ -39,8 +39,8 @@ def create_post(new_post: schemas.PostCreate,db: Session =Depends(get_db), curre
         # connection.commit()  #commit the changes to the database
 
         #new_post = models.Post(title=new_post.title, content=new_post.content, published=new_post.published)
-        print(current_user.email)
-        new_post=models.Post(**new_post.dict())    #**new_post.dict() is used to convert the pydantic model to dictionary
+        #print(current_user.email)
+        new_post=models.Post(user_id=current_user.id, **new_post.dict())    #**new_post.dict() is used to convert the pydantic model to dictionary
         db.add(new_post) #add the new post to the database
         db.commit()  #commit the changes to the database
         db.refresh(new_post)  #refresh the database to get the newly created post
@@ -54,43 +54,63 @@ def delete_post(id: int, db:Session = Depends(get_db), current_user: int = Depen
     # cursor.execute("DELETE FROM posts WHERE id = %s RETURNING *" ,(str(id)))
     # deleted_post = cursor.fetchone()
     # connection.commit()
-    deleted_post = db.query(models.Post).filter(models.Post.id == id).delete(synchronize_session=False) #delete the post by id & 
-                                                                                                        #synchronize_session=False is used to avoid the error
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+
+    post = post_query.first()
+
+    if post == None:
+        raise HTTPException(status_code=404, detail=f"post with id {id} not found")
+    
+    if post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail=f"Not authorized user")
+    
+    post_query.delete(synchronize_session=False) #delete the post by id & 
+                                           #synchronize_session=False is used to avoid the error)
     db.commit()
 
-    if deleted_post == None:
-        raise HTTPException(status_code=404, detail=f"post with id {id} not found")
-    else:
-        return {"data": {f"post with id {id} is deleted": deleted_post}}
+    return {"data": {f"post with id {id} is deleted": post}}
 
 
 @router.put("/{id}", response_model=schemas.Post)
-def update_post(id: int, post: schemas.PostCreate,db:Session =Depends(get_db), current_user :int = Depends(Oauth2.get_current_user)):
+def update_post(id: int, updated_post: schemas.PostCreate, db:Session =Depends(get_db), current_user :int = Depends(Oauth2.get_current_user)):
     # cursor.execute(
     #     "UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *",
     #     (post.title, post.content, post.published, str(id)))
     # updated_posts = cursor.fetchone()
     # connection.commit()
-    updated_posts = db.query(models.Post).filter(models.Post.id == id).update(post.dict(), synchronize_session=False)
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+    
+    post = post_query.first()
 
-    if updated_posts == 0:
+    if post == 0:
         raise HTTPException(status_code=404, detail=f"post with id {id} not found")
+
+    if post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail=f"Not authorized user")
+
     else:
+        post_query.update(updated_post.dict(), synchronize_session=False)   
         db.commit()
-        updated_post = db.query(models.Post).filter(models.Post.id == id).first()
-        return updated_post    
+
+        return post    
     
 @router.patch("/{id}", response_model=schemas.Post)
-def update_post(id: int, post: schemas.PostCreate,db:Session =Depends(get_db), current_user: int = Depends(Oauth2.get_current_user)):
+def update_post(id: int, updated_post: schemas.PostCreate,db:Session =Depends(get_db), current_user: int = Depends(Oauth2.get_current_user)):
     # cursor.execute("UPDATE posts SET title = %s WHERE id = %s RETURNING *", (post.title, str(id)))
     # updated_posts = cursor.fetchone()
     # connection.commit()
-    updated_posts = db.query(models.Post).filter(models.Post.id == id).update(post.dict(), synchronize_session=False)
+    post_query = db.query(models.Post).filter(models.Post.id == id).update(post.dict(), synchronize_session=False)
     
-    
-    if updated_posts == None:
+    post =  post_query.first()
+
+    if post == None:
         raise HTTPException(status_code=404, detail=f"post with id {id} not found") 
+
+    if post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail=f"Not authorized user")
+    
     else:
+        post_query.update(updated_post.dict(), synchronize_session=False)  
         db.commit()
-        updated_posts = db.query(models.Post).filter(models.Post.id == id).first()
-        return updated_posts
+        
+        return post

@@ -8,7 +8,7 @@ from fastapi import Depends
 from .config import host, database, user, password
 from . import models,schemas
 from .database import engine, get_db
-from app.routers import post, User, auth
+from app.routers import post, User, auth 
 
 models.Base.metadata.create_all(bind=engine)
 

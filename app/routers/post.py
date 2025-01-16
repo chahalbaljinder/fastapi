@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
+from app import Oauth2
 
 router = APIRouter(
     prefix="/posts",
@@ -17,7 +18,7 @@ def get_posts(db: Session =Depends(get_db)):
 
 
 @router.get("/{id}", response_model=schemas.Post)
-def get_post_by_id(id: int, db: Session =Depends(get_db)):
+def get_post_by_id(id: int, db: Session =Depends(get_db), current_user: int = Depends(Oauth2.get_current_user)):
     # cursor.execute("SELECT * FROM posts WHERE id = %s", (str(id)))
     # post = cursor.fetchone()
     post = db.query(models.Post).filter(models.Post.id == id).first() #filter the post by id
@@ -28,8 +29,8 @@ def get_post_by_id(id: int, db: Session =Depends(get_db)):
 
 
 #using pydantic library for schema 
-@router.post("/newpost" , status_code=201, response_model=schemas.Post)
-def create_post(new_post: schemas.PostCreate,db: Session =Depends(get_db)):
+@router.post("/" , status_code=201, response_model=schemas.Post)
+def create_post(new_post: schemas.PostCreate,db: Session =Depends(get_db), current_user: int = Depends(Oauth2.get_current_user)):
     try:
         # cursor.execute(
         #     "INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING *",
@@ -38,6 +39,7 @@ def create_post(new_post: schemas.PostCreate,db: Session =Depends(get_db)):
         # connection.commit()  #commit the changes to the database
 
         #new_post = models.Post(title=new_post.title, content=new_post.content, published=new_post.published)
+        print(current_user.email)
         new_post=models.Post(**new_post.dict())    #**new_post.dict() is used to convert the pydantic model to dictionary
         db.add(new_post) #add the new post to the database
         db.commit()  #commit the changes to the database
@@ -48,7 +50,7 @@ def create_post(new_post: schemas.PostCreate,db: Session =Depends(get_db)):
 
 
 @router.delete("/{id}", status_code=204) #status code 204 means no content is sent back to show deleted content
-def delete_post(id: int, db:Session = Depends(get_db)):
+def delete_post(id: int, db:Session = Depends(get_db), current_user: int = Depends(Oauth2.get_current_user)):
     # cursor.execute("DELETE FROM posts WHERE id = %s RETURNING *" ,(str(id)))
     # deleted_post = cursor.fetchone()
     # connection.commit()
@@ -63,7 +65,7 @@ def delete_post(id: int, db:Session = Depends(get_db)):
 
 
 @router.put("/{id}", response_model=schemas.Post)
-def update_post(id: int, post: schemas.PostCreate,db:Session =Depends(get_db)):
+def update_post(id: int, post: schemas.PostCreate,db:Session =Depends(get_db), current_user :int = Depends(Oauth2.get_current_user)):
     # cursor.execute(
     #     "UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *",
     #     (post.title, post.content, post.published, str(id)))
@@ -79,7 +81,7 @@ def update_post(id: int, post: schemas.PostCreate,db:Session =Depends(get_db)):
         return updated_post    
     
 @router.patch("/{id}", response_model=schemas.Post)
-def update_post(id: int, post: schemas.PostCreate,db:Session =Depends(get_db)):
+def update_post(id: int, post: schemas.PostCreate,db:Session =Depends(get_db), current_user: int = Depends(Oauth2.get_current_user)):
     # cursor.execute("UPDATE posts SET title = %s WHERE id = %s RETURNING *", (post.title, str(id)))
     # updated_posts = cursor.fetchone()
     # connection.commit()
